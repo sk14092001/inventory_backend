@@ -86,4 +86,5 @@ public class PurchaseController {
         BigDecimal bal = ledgerRepository.getLastBalance(supplierId);
         return bal != null ? bal : BigDecimal.ZERO;
     }
+
 }
