@@ -1,9 +1,9 @@
 package com.inventory_backend.inventory_backend.entity;
+
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "stock_ledger")
 @Getter
@@ -28,7 +28,8 @@ public class StockLedger {
 
     private Double qtyIn;
     private Double qtyOut;
-    private Double balanceQty;
+
+    private Double closingStock;  // Running stock balance
 
     private LocalDate transactionDate;
 

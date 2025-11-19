@@ -28,6 +28,7 @@ public class PurchaseService {
     private final SupplierAdvanceRepository advanceRepo;
     private final SupplierAdvanceLedgerRepository ledgerRepo;
     private final ProductRepository productRepo;
+    private final StockService stockService;
 
     private static final int PAGE_SIZE = 200;
 
@@ -99,15 +100,18 @@ public class PurchaseService {
         return purchaseRepo.save(purchase);
     }
 
-    private void savePurchaseDetails(PurchaseRequest req, Supplier supplier, Purchase purchase) {
-
-        List<PurchaseDetails> list = new ArrayList<>();
+    @Transactional
+    private void savePurchaseDetails(PurchaseRequest req,
+                                     Supplier supplier,
+                                     Purchase purchase) {
 
         for (PurchaseItemDto item : req.getItems()) {
 
+            // 1. Get Product
             Product product = productRepo.findById(item.getProductId())
                     .orElseThrow(() -> new RuntimeException("Product not found"));
 
+            // 2. Get supplier product price
             SupplierProductPrice priceInfo =
                     supplierPriceRepo.findBySupplierAndProduct(supplier, product)
                             .orElseThrow(() -> new RuntimeException("Supplier product price not found"));
@@ -115,19 +119,26 @@ public class PurchaseService {
             BigDecimal price = BigDecimal.valueOf(priceInfo.getPrice());
             BigDecimal lineTotal = price.multiply(item.getQty());
 
-            list.add(
-                    PurchaseDetails.builder()
-                            .purchase(purchase)
-                            .product(product)
-                            .qty(item.getQty())
-                            .price(price)
-                            .total(lineTotal)
-                            .build()
+            // 3. Save ONE purchase detail at a time (IMPORTANT for ID)
+            PurchaseDetails details = PurchaseDetails.builder()
+                    .purchase(purchase)
+                    .product(product)
+                    .qty(item.getQty())
+                    .price(price)
+                    .total(lineTotal)
+                    .build();
+
+            details = purchaseDetailsRepo.save(details);  // Generates purchaseDetailId
+
+            // 4. Call Stock In (AFTER saving details)
+            stockService.stockIn(
+                    product,
+                    details.getPurchaseDetailId(),       // FK
+                    item.getQty().doubleValue()       // qty
             );
         }
-
-        purchaseDetailsRepo.saveAll(list);
     }
+
 
 
     /* ----------------------------------------------------------------------

@@ -7,10 +7,15 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "purchase_details")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class PurchaseDetails {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long purchaseDetailId;
 
     @ManyToOne(fetch = FetchType.LAZY)
