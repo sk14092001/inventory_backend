@@ -1,7 +1,6 @@
 package com.inventory_backend.inventory_backend.controller;
 
-import com.inventory_backend.inventory_backend.dto.PurchaseRequest;
-import com.inventory_backend.inventory_backend.dto.PurchaseTotalResponse;
+import com.inventory_backend.inventory_backend.dto.*;
 import com.inventory_backend.inventory_backend.entity.Purchase;
 import com.inventory_backend.inventory_backend.entity.Supplier;
 import com.inventory_backend.inventory_backend.entity.SupplierAdvanceLedger;
@@ -24,9 +23,6 @@ public class PurchaseController {
     private final SupplierRepository supplierRepository;
     private final SupplierAdvanceLedgerRepository ledgerRepository;
 
-    // ------------------------------------------------------------
-    // 1️⃣  Calculate Total Before Creating Purchase
-    // ------------------------------------------------------------
     @PostMapping("/calculate/{supplierId}")
     public PurchaseTotalResponse calculateTotal(
             @PathVariable Long supplierId,
@@ -38,11 +34,8 @@ public class PurchaseController {
         return purchaseService.calculateTotal(request, supplier);
     }
 
-    // ------------------------------------------------------------
-    // 2️⃣  Create Purchase (with or without paidAmount)
-    // ------------------------------------------------------------
     @PostMapping("/create/{supplierId}")
-    public Purchase createPurchase(
+    public PurchaseCreateResponse createPurchase(
             @PathVariable Long supplierId,
             @RequestParam(required = false) BigDecimal paidAmount,
             @RequestBody PurchaseRequest request) {
@@ -53,11 +46,8 @@ public class PurchaseController {
         return purchaseService.createPurchase(request, supplier, paidAmount);
     }
 
-    // ------------------------------------------------------------
-    // 3️⃣  Pay Amount WITHOUT Purchase (Pure Advance)
-    // ------------------------------------------------------------
     @PostMapping("/pay-only/{supplierId}")
-    public SupplierAdvanceLedger payOnly(
+    public SupplierPaymentResponse payOnly(
             @PathVariable Long supplierId,
             @RequestParam BigDecimal amount) {
 
@@ -67,24 +57,20 @@ public class PurchaseController {
         Supplier supplier = supplierRepository.findById(supplierId)
                 .orElseThrow(() -> new RuntimeException("Supplier not found"));
 
-        return purchaseService.addStandaloneAdvancePayment(supplier, amount);
+        return purchaseService.payOnly(supplier, amount);
     }
 
-    // ------------------------------------------------------------
-    // 4️⃣  Get Supplier Ledger History
-    // ------------------------------------------------------------
-//    @GetMapping("/ledger/{supplierId}")
-//    public List<SupplierAdvanceLedger> getLedger(@PathVariable Long supplierId) {
-//        return ledgerRepository.findBySupplier_SupplierIdOrderByTransactionDateAsc(supplierId);
-//    }
 
-    // ------------------------------------------------------------
-    // 5️⃣  Get Latest Balance (BalanceAfterTransaction)
-    // ------------------------------------------------------------
+    @GetMapping("/ledger/{supplierId}")
+    public SupplierLedgerResponse getLedger(@PathVariable Long supplierId) {
+        return purchaseService.getSupplierLedger(supplierId);
+    }
+
+
     @GetMapping("/balance/{supplierId}")
-    public BigDecimal getSupplierBalance(@PathVariable Long supplierId) {
-        BigDecimal bal = ledgerRepository.getLastBalance(supplierId);
-        return bal != null ? bal : BigDecimal.ZERO;
+    public SupplierBalanceResponse getSupplierBalance(@PathVariable Long supplierId) {
+
+        return purchaseService.getSupplierBalanceDetails(supplierId);
     }
 
 

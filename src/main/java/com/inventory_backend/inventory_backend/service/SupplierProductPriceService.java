@@ -1,6 +1,7 @@
 package com.inventory_backend.inventory_backend.service;
 
 import com.inventory_backend.inventory_backend.dto.SupplierProductPriceDTO;
+import com.inventory_backend.inventory_backend.dto.SupplierProductPriceResponseDTO;
 import com.inventory_backend.inventory_backend.entity.Product;
 import com.inventory_backend.inventory_backend.entity.Supplier;
 import com.inventory_backend.inventory_backend.entity.SupplierProductPrice;
@@ -20,7 +21,7 @@ public class SupplierProductPriceService {
     private final ProductRepository productRepository;
     private final SupplierProductPriceRepository sppRepository;
 
-    public SupplierProductPrice saveMapping(SupplierProductPriceDTO dto) {
+    public SupplierProductPriceResponseDTO saveMapping(SupplierProductPriceDTO dto) {
 
         Supplier supplier = supplierRepository.findById(dto.getSupplierId())
                 .orElseThrow(() -> new RuntimeException("Supplier not found"));
@@ -36,7 +37,17 @@ public class SupplierProductPriceService {
                 .validTo(null)
                 .build();
 
-        return sppRepository.save(spp);
+        SupplierProductPrice saved = sppRepository.save(spp);
+
+        // Convert to response DTO (CHANGED)
+        SupplierProductPriceResponseDTO response = new SupplierProductPriceResponseDTO();
+        response.setPriceId(saved.getPriceId());
+        response.setSupplierId(saved.getSupplier().getSupplierId());
+        response.setProductId(saved.getProduct().getProductId());
+        response.setPrice(saved.getPrice());
+        response.setValidFrom(saved.getValidFrom());
+        response.setValidTo(saved.getValidTo());
+
+        return response;
     }
 }
-

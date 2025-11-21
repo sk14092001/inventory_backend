@@ -9,7 +9,11 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "supplier_advance_ledger")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class SupplierAdvanceLedger {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -16,7 +16,7 @@ public class ProfitAndLoss {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long plId;
-
+    private Long supplierId;
     private String periodType;           // DAILY | WEEKLY | MONTHLY | YEARLY
     private LocalDate periodStart;
     private LocalDate periodEnd;

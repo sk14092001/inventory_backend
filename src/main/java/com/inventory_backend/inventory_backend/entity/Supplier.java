@@ -25,7 +25,11 @@ public class Supplier {
     @Column(length = 500)
     private String address;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
 
     @OneToMany(mappedBy = "supplier", cascade = CascadeType.ALL)
     private List<SupplierProductPrice> prices;

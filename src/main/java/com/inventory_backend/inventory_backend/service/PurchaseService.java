@@ -1,8 +1,6 @@
 package com.inventory_backend.inventory_backend.service;
 
-import com.inventory_backend.inventory_backend.dto.PurchaseItemDto;
-import com.inventory_backend.inventory_backend.dto.PurchaseRequest;
-import com.inventory_backend.inventory_backend.dto.PurchaseTotalResponse;
+import com.inventory_backend.inventory_backend.dto.*;
 import com.inventory_backend.inventory_backend.entity.*;
 import com.inventory_backend.inventory_backend.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -29,12 +27,11 @@ public class PurchaseService {
     private final SupplierAdvanceLedgerRepository ledgerRepo;
     private final ProductRepository productRepo;
     private final StockService stockService;
+    private final SupplierRepository supplierRepository;
 
     private static final int PAGE_SIZE = 200;
 
-    /* ----------------------------------------------------------------------
-       1. CALCULATE TOTAL
-    ---------------------------------------------------------------------- */
+
     public PurchaseTotalResponse calculateTotal(PurchaseRequest request, Supplier supplier) {
 
         BigDecimal total = BigDecimal.ZERO;
@@ -55,36 +52,71 @@ public class PurchaseService {
         return new PurchaseTotalResponse(total, BigDecimal.ZERO, total);
     }
 
-    /* ----------------------------------------------------------------------
-       2. CREATE PURCHASE (WITH OPTIONAL IMMEDIATE PAYMENT)
-    ---------------------------------------------------------------------- */
+
     @Transactional
-    public Purchase createPurchase(PurchaseRequest request,
-                                   Supplier supplier,
-                                   BigDecimal paidAmount) {
+    public PurchaseCreateResponse createPurchase(PurchaseRequest request,
+                                                 Supplier supplier,
+                                                 BigDecimal paidAmount) {
 
         if (paidAmount == null) paidAmount = BigDecimal.ZERO;
 
-        // Step A — calculate final total
-        PurchaseTotalResponse totalRes = calculateTotal(request, supplier);
-        BigDecimal grandTotal = totalRes.getGrandTotal();
+        PurchaseTotalResponse calc = calculateTotal(request, supplier);
 
-        // Step B — create purchase header
-        Purchase purchase = savePurchaseHeader(request, supplier, totalRes);
+        Purchase purchase = savePurchaseHeader(request, supplier, calc);
 
-        // Step C — save purchase item details
-        savePurchaseDetails(request, supplier, purchase);
+        List<PurchaseDetailsResponse> detailsResponses = new ArrayList<>();
 
-        // Step D — if paid during creation → add advance (CR)
+        for (PurchaseItemDto item : request.getItems()) {
+
+            Product product = productRepo.findById(item.getProductId())
+                    .orElseThrow(() -> new RuntimeException("Product not found"));
+
+            SupplierProductPrice priceInfo =
+                    supplierPriceRepo.findBySupplierAndProduct(supplier, product)
+                            .orElseThrow(() -> new RuntimeException("Supplier price not found"));
+
+            BigDecimal price = BigDecimal.valueOf(priceInfo.getPrice());
+            BigDecimal lineTotal = price.multiply(item.getQty());
+
+            PurchaseDetails details = PurchaseDetails.builder()
+                    .purchase(purchase)
+                    .product(product)
+                    .qty(item.getQty())
+                    .price(price)
+                    .total(lineTotal)
+                    .build();
+
+            details = purchaseDetailsRepo.save(details);
+
+            stockService.stockIn(product, details.getPurchaseDetailId(), item.getQty().doubleValue());
+
+            detailsResponses.add(new PurchaseDetailsResponse(
+                    product.getProductId(),
+                    product.getName(),
+                    item.getQty(),
+                    price,
+                    lineTotal
+            ));
+        }
+
+
         if (paidAmount.compareTo(BigDecimal.ZERO) > 0) {
             addAdvance(supplier, paidAmount, "PURCHASE_PAYMENT", purchase.getPurchaseId());
         }
 
-        // Step E — auto deduct via FIFO
-        deductAdvanceFIFO(supplier, purchase, grandTotal);
+        deductAdvanceFIFO(supplier, purchase, calc.getGrandTotal());
 
-        return purchase;
+        return new PurchaseCreateResponse(
+                "SUCCESS",
+                "Purchase created successfully",
+                purchase.getPurchaseId(),
+                calc.getTotalAmount(),
+                calc.getDiscount(),
+                calc.getGrandTotal(),
+                detailsResponses
+        );
     }
+
 
     private Purchase savePurchaseHeader(PurchaseRequest req, Supplier supplier, PurchaseTotalResponse calc) {
 
@@ -107,11 +139,9 @@ public class PurchaseService {
 
         for (PurchaseItemDto item : req.getItems()) {
 
-            // 1. Get Product
             Product product = productRepo.findById(item.getProductId())
                     .orElseThrow(() -> new RuntimeException("Product not found"));
 
-            // 2. Get supplier product price
             SupplierProductPrice priceInfo =
                     supplierPriceRepo.findBySupplierAndProduct(supplier, product)
                             .orElseThrow(() -> new RuntimeException("Supplier product price not found"));
@@ -119,7 +149,6 @@ public class PurchaseService {
             BigDecimal price = BigDecimal.valueOf(priceInfo.getPrice());
             BigDecimal lineTotal = price.multiply(item.getQty());
 
-            // 3. Save ONE purchase detail at a time (IMPORTANT for ID)
             PurchaseDetails details = PurchaseDetails.builder()
                     .purchase(purchase)
                     .product(product)
@@ -128,30 +157,24 @@ public class PurchaseService {
                     .total(lineTotal)
                     .build();
 
-            details = purchaseDetailsRepo.save(details);  // Generates purchaseDetailId
+            details = purchaseDetailsRepo.save(details);
 
-            // 4. Call Stock In (AFTER saving details)
             stockService.stockIn(
                     product,
-                    details.getPurchaseDetailId(),       // FK
-                    item.getQty().doubleValue()       // qty
+                    details.getPurchaseDetailId(),
+                    item.getQty().doubleValue()
             );
         }
     }
 
 
-
-    /* ----------------------------------------------------------------------
-       3. ADD ADVANCE PAYMENT (CREDIT)
-       -> Used in: PURCHASE_PAYMENT & DIRECT_PAYMENT
-    ---------------------------------------------------------------------- */
     @Transactional
     public SupplierAdvanceLedger addAdvance(Supplier supplier,
                                             BigDecimal amount,
                                             String referenceType,
                                             Long referenceId) {
 
-        // 1. Create advance bucket
+
         SupplierAdvance advance = SupplierAdvance.builder()
                 .supplier(supplier)
                 .originalAmount(amount)
@@ -162,14 +185,12 @@ public class PurchaseService {
 
         advance = advanceRepo.save(advance);
 
-        // 2. Calculate new ledger balance
         BigDecimal lastBalance = Optional.ofNullable(
                 ledgerRepo.getLastBalance(supplier.getSupplierId())
         ).orElse(BigDecimal.ZERO);
 
         BigDecimal newBalance = lastBalance.add(amount);
 
-        // 3. Create ledger entry
         SupplierAdvanceLedger ledgerEntry = SupplierAdvanceLedger.builder()
                 .advance(advance)
                 .supplier(supplier)
@@ -187,9 +208,6 @@ public class PurchaseService {
     }
 
 
-    /* ----------------------------------------------------------------------
-       4. PAYMENT WITHOUT PURCHASE (Scenario 3)
-    ---------------------------------------------------------------------- */
     @Transactional
     public SupplierAdvanceLedger payWithoutPurchase(Supplier supplier, BigDecimal amount) {
 
@@ -200,9 +218,6 @@ public class PurchaseService {
     }
 
 
-    /* ----------------------------------------------------------------------
-       5. FIFO ADVANCE DEDUCTION (Purchase)
-    ---------------------------------------------------------------------- */
     private void deductAdvanceFIFO(Supplier supplier,
                                    Purchase purchase,
                                    BigDecimal grandTotal) {
@@ -260,7 +275,7 @@ public class PurchaseService {
             pageable = PageRequest.of(++page, PAGE_SIZE);
         }
 
-        // if advance fully consumed but purchase still pending → record pending debit
+
         if (remaining.compareTo(BigDecimal.ZERO) > 0) {
 
             BigDecimal newBalance = ledgerBalance.subtract(remaining);
@@ -282,10 +297,22 @@ public class PurchaseService {
         }
     }
 
+    public SupplierPaymentResponse payOnly(Supplier supplier, BigDecimal amount) {
+
+        SupplierAdvanceLedger ledger = addStandaloneAdvancePayment(supplier, amount);
+
+        return new SupplierPaymentResponse(
+                "SUCCESS",
+                "Payment recorded successfully",
+                amount,
+                ledger.getBalanceAfterTransaction(),
+                ledger.getLedgerId()
+        );
+    }
+
     @Transactional
     public SupplierAdvanceLedger addStandaloneAdvancePayment(Supplier supplier, BigDecimal amount) {
 
-        // Create advance
         SupplierAdvance adv = SupplierAdvance.builder()
                 .supplier(supplier)
                 .originalAmount(amount)
@@ -295,13 +322,11 @@ public class PurchaseService {
                 .build();
         adv = advanceRepo.save(adv);
 
-        // Get last balance
         BigDecimal lastBalance = ledgerRepo.getLastBalance(supplier.getSupplierId());
         if (lastBalance == null) lastBalance = BigDecimal.ZERO;
 
         BigDecimal newBalance = lastBalance.add(amount);
 
-        // Ledger entry
         SupplierAdvanceLedger ledger = SupplierAdvanceLedger.builder()
                 .advance(adv)
                 .supplier(supplier)
@@ -318,5 +343,60 @@ public class PurchaseService {
         return ledgerRepo.save(ledger);
     }
 
+    public SupplierBalanceResponse getSupplierBalanceDetails(Long supplierId) {
 
+        Supplier supplier = supplierRepository.findById(supplierId)
+                .orElseThrow(() -> new RuntimeException("Supplier not found"));
+
+        BigDecimal balance = ledgerRepo.getLastBalance(supplierId);
+        if (balance == null) balance = BigDecimal.ZERO;
+
+        return new SupplierBalanceResponse(
+                supplier.getSupplierId(),
+                supplier.getName(),
+                supplier.getPhone(),
+                supplier.getEmail(),
+                supplier.getAddress(),
+                balance
+        );
+    }
+
+    public SupplierLedgerResponse getSupplierLedger(Long supplierId) {
+
+        Supplier supplier = supplierRepository.findById(supplierId)
+                .orElseThrow(() -> new RuntimeException("Supplier not found"));
+
+        List<SupplierAdvanceLedger> ledgerList =
+                ledgerRepo.findBySupplier_SupplierIdOrderByTransactionDateAsc(supplierId);
+
+        BigDecimal balance = ledgerRepo.getLastBalance(supplierId);
+        if (balance == null) balance = BigDecimal.ZERO;
+
+
+        SupplierResponseDTO supplierDTO = new SupplierResponseDTO(
+                supplier.getSupplierId(),
+                supplier.getName(),
+                supplier.getPhone(),
+                supplier.getEmail(),
+                supplier.getAddress(),
+                supplier.getCreatedAt()
+        );
+
+
+        List<SupplierLedgerDTO> ledgerDtoList = ledgerList.stream()
+                .map(l -> new SupplierLedgerDTO(
+                        l.getLedgerId(),
+                        l.getTransactionType(),
+                        l.getAmount(),
+                        l.getBalanceAfterTransaction(),
+                        l.getTransactionDate(),
+                        l.getReferenceType(),
+                        l.getReferenceId(),
+                        l.getRemarks()
+                ))
+                .toList();
+
+        return new SupplierLedgerResponse(supplierDTO, balance, ledgerDtoList);
+
+    }
 }

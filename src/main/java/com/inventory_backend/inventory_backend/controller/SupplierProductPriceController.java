@@ -1,6 +1,7 @@
 package com.inventory_backend.inventory_backend.controller;
 
 import com.inventory_backend.inventory_backend.dto.SupplierProductPriceDTO;
+import com.inventory_backend.inventory_backend.dto.SupplierProductPriceResponseDTO;
 import com.inventory_backend.inventory_backend.entity.SupplierProductPrice;
 import com.inventory_backend.inventory_backend.service.SupplierProductPriceService;
 import lombok.RequiredArgsConstructor;
@@ -18,9 +19,12 @@ public class SupplierProductPriceController {
     private final SupplierProductPriceService sppService;
 
     @PostMapping("/map")
-    public ResponseEntity<SupplierProductPrice> mapSupplierToProduct(
+    public ResponseEntity<SupplierProductPriceResponseDTO> mapSupplierToProduct(
             @RequestBody SupplierProductPriceDTO dto) {
 
-        return ResponseEntity.ok(sppService.saveMapping(dto));
+        SupplierProductPriceResponseDTO response =
+                sppService.saveMapping(dto);
+
+        return ResponseEntity.ok(response);
     }
 }

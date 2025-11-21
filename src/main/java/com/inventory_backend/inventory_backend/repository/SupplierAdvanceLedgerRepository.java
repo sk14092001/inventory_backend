@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public interface SupplierAdvanceLedgerRepository extends JpaRepository<SupplierAdvanceLedger, Long> {
 
@@ -17,5 +18,8 @@ public interface SupplierAdvanceLedgerRepository extends JpaRepository<SupplierA
             nativeQuery = true
     )
     BigDecimal getLastBalance(@Param("supplierId") Long supplierId);
+
+    List<SupplierAdvanceLedger>
+    findBySupplier_SupplierIdOrderByTransactionDateAsc(Long supplierId);
 
 }

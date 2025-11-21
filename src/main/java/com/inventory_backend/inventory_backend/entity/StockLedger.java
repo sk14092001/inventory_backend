@@ -21,7 +21,7 @@ public class StockLedger {
     @JoinColumn(name = "product_id")
     private Product product;
 
-    // PURCHASE / SALE
+
     private String transactionType;
 
     private Long transactionId;
@@ -29,7 +29,7 @@ public class StockLedger {
     private Double qtyIn;
     private Double qtyOut;
 
-    private Double closingStock;  // Running stock balance
+    private Double closingStock;
 
     private LocalDate transactionDate;
 
