@@ -74,22 +74,27 @@ public class ProductService {
         );
     }
 
-    public ProductResponse update(Long id,ProductRequest request)
+    public ProductResponse update(Long id,ProductRequest req)
     {
-        Product product  =productRepository.findById(id).
-                orElseThrow(()->new RuntimeException("Product Not Found"));
+        if (id == null) {
+            throw new IllegalArgumentException("Product ID cannot be null");
+        }
 
-        product.setName(request.getName());
-        product.setDescription(request.getDescription());
-        product.setPrefixPrice(request.getPrefixPrice());
-        product.setUnit(request.getUnit());
-        Product updatedProduct =productRepository.save(product);
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        product.setName(req.getName());
+        product.setUnit(req.getUnit());
+        product.setDescription(req.getDescription());
+        product.setPrefixPrice(req.getPrefixPrice());
+        Product savedProduct  = productRepository.save(product);
+
         return new ProductResponse(
-                updatedProduct.getProductId(),
-                updatedProduct.getName(),
-                updatedProduct.getUnit(),
-                updatedProduct.getDescription(),
-                updatedProduct.getPrefixPrice()
+                savedProduct.getProductId(),
+                savedProduct.getName(),
+                savedProduct.getUnit(),
+                savedProduct.getDescription(),
+                savedProduct.getPrefixPrice()
         );
     }
 
