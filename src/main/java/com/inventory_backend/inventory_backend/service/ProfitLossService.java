@@ -1,6 +1,7 @@
 package com.inventory_backend.inventory_backend.service;
 
 import com.inventory_backend.inventory_backend.dto.ProfitLossResponse;
+import com.inventory_backend.inventory_backend.dto.ProfitLossResponseDto;
 import com.inventory_backend.inventory_backend.entity.ProfitAndLoss;
 import com.inventory_backend.inventory_backend.entity.SalesItem;
 import com.inventory_backend.inventory_backend.entity.Supplier;
@@ -11,22 +12,26 @@ import com.inventory_backend.inventory_backend.repository.SupplierRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
 
+import java.util.List;
 @Service
 public class ProfitLossService {
 
     @Autowired
     private SalesItemRepository salesItemRepo;
+
     @Autowired
     private PurchaseDetailsRepository purchaseRepo;
+
     @Autowired
     private ProfitAndLossRepository plRepo;
 
     @Autowired
     private SupplierRepository supplierRepository;
+
+
 
     public ProfitLossResponse calculateSupplierProfitLoss(
             Long supplierId,
@@ -34,49 +39,57 @@ public class ProfitLossService {
             LocalDate end,
             String periodType) {
 
-        // 1. Find products supplied by supplier
         List<Long> productIds = purchaseRepo.findProductIdsBySupplier(supplierId);
+
         Supplier supplier = supplierRepository.findById(supplierId)
                 .orElseThrow(() -> new RuntimeException("Supplier Not Found"));
 
         String supplierName = supplier.getName();
 
-
         if (productIds.isEmpty()) {
-            return new ProfitLossResponse(0.0, 0.0, 0.0, periodType, start, end);
+            return new ProfitLossResponse(
+                    supplierId,
+                    supplierName,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    periodType,
+                    start,
+                    end
+            );
         }
 
-        // 2. Get sale items for these products
         List<SalesItem> saleItems = salesItemRepo.findByProductIdsAndInvoiceDate(productIds, start, end);
 
-        double totalSales = 0.0;
-        double totalPurchase = 0.0;
+        BigDecimal totalSales = BigDecimal.ZERO;
+        BigDecimal totalPurchase = BigDecimal.ZERO;
 
         for (SalesItem si : saleItems) {
 
             Long productId = si.getProduct().getProductId();
 
-            Double avgPurchase = purchaseRepo.getAveragePurchasePriceForSupplierProduct(productId, supplierId);
-            if (avgPurchase == null) avgPurchase = 0.0;
+            Double avgPurchasePrice = purchaseRepo.getAveragePurchasePriceForSupplierProduct(productId, supplierId);
+            BigDecimal avgPurchase = avgPurchasePrice != null ?
+                    BigDecimal.valueOf(avgPurchasePrice) : BigDecimal.ZERO;
 
-            double saleAmount = si.getSellingPrice().doubleValue() * si.getQty().doubleValue();
-            double purchaseAmount = avgPurchase * si.getQty().doubleValue();
+            BigDecimal saleAmount = si.getSellingPrice().multiply(si.getQty());
+            BigDecimal purchaseAmount = avgPurchase.multiply(si.getQty());
 
-            totalSales += saleAmount;
-            totalPurchase += purchaseAmount;
+            totalSales = totalSales.add(saleAmount);
+            totalPurchase = totalPurchase.add(purchaseAmount);
         }
 
-        double profit = totalSales - totalPurchase;
+        BigDecimal profit = totalSales.subtract(totalPurchase);
 
-        // Save
+
         ProfitAndLoss pl = ProfitAndLoss.builder()
                 .periodType(periodType)
                 .supplierId(supplierId)
                 .periodStart(start)
                 .periodEnd(end)
-                .totalPurchase(totalPurchase)
-                .totalSales(totalSales)
-                .totalProfit(profit)
+                .totalPurchase(totalPurchase.doubleValue())
+                .totalSales(totalSales.doubleValue())
+                .totalProfit(profit.doubleValue())
                 .build();
 
         plRepo.save(pl);
@@ -98,35 +111,24 @@ public class ProfitLossService {
             LocalDate end,
             String periodType) {
 
-        // Convert LocalDate to LocalDateTime for the full day
-        LocalDateTime startDateTime = start.atStartOfDay();        // 00:00:00
-        LocalDateTime endDateTime = end.atTime(23, 59, 59);       // 23:59:59
+        BigDecimal totalPurchase = purchaseRepo.getTotalPurchaseAmount(start, end);
+        BigDecimal totalSales = salesItemRepo.getTotalSalesAmountByInvoiceDate(start, end);
 
-        // 1. Total purchase amount
-        Double totalPurchase = purchaseRepo.getTotalPurchaseAmount(startDateTime.toLocalDate(), endDateTime.toLocalDate());
+        if (totalPurchase == null) totalPurchase = BigDecimal.ZERO;
+        if (totalSales == null) totalSales = BigDecimal.ZERO;
 
-        // 2. Total sales amount
-        Double totalSales = salesItemRepo.getTotalSalesAmountByInvoiceDate(startDateTime.toLocalDate(), endDateTime.toLocalDate());
-
-
-        if (totalPurchase == null) totalPurchase = 0.0;
-        if (totalSales == null) totalSales = 0.0;
-
-
-        Double profit = totalSales - totalPurchase;
-
+        BigDecimal profit = totalSales.subtract(totalPurchase);
 
         ProfitAndLoss pl = ProfitAndLoss.builder()
                 .periodType(periodType)
-                .periodStart(startDateTime.toLocalDate())
-                .periodEnd(endDateTime.toLocalDate())
-                .totalPurchase(totalPurchase)
-                .totalSales(totalSales)
-                .totalProfit(profit)
+                .periodStart(start)
+                .periodEnd(end)
+                .totalPurchase(totalPurchase.doubleValue())
+                .totalSales(totalSales.doubleValue())
+                .totalProfit(profit.doubleValue())
                 .build();
 
         plRepo.save(pl);
-
 
         return new ProfitLossResponse(
                 null,
@@ -135,10 +137,51 @@ public class ProfitLossService {
                 totalSales,
                 profit,
                 periodType,
-                startDateTime.toLocalDate(),
-                endDateTime.toLocalDate()
+                start,
+                end
+        );
+    }
+    public ProfitLossResponseDto calculateOverall() {
+
+        BigDecimal totalPurchase = purchaseRepo.getTotalPurchaseAllTime();
+        BigDecimal totalSales = salesItemRepo.getTotalSalesAllTime();
+
+        if (totalPurchase == null) totalPurchase = BigDecimal.ZERO;
+        if (totalSales == null) totalSales = BigDecimal.ZERO;
+
+        BigDecimal profit = totalSales.subtract(totalPurchase);
+
+        return new ProfitLossResponseDto(
+                null,
+                "OVERALL",
+                totalPurchase,
+                totalSales,
+                profit,
+                "ALL_TIME"
         );
     }
 
-}
 
+    public ProfitLossResponseDto calculateSupplier(Long supplierId) {
+
+        Supplier supplier = supplierRepository.findById(supplierId)
+                .orElseThrow(() -> new RuntimeException("Supplier Not Found"));
+
+        BigDecimal totalSales = salesItemRepo.getSupplierSalesAllTime(supplierId);
+        BigDecimal totalPurchase = purchaseRepo.getSupplierPurchaseAllTime(supplierId);
+
+        if (totalPurchase == null) totalPurchase = BigDecimal.ZERO;
+        if (totalSales == null) totalSales = BigDecimal.ZERO;
+
+        BigDecimal profit = totalSales.subtract(totalPurchase);
+
+        return new ProfitLossResponseDto(
+                supplierId,
+                supplier.getName(),
+                totalPurchase,
+                totalSales,
+                profit,
+                "ALL_TIME"
+        );
+    }
+}

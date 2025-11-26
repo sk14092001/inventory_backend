@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface SupplierAdvanceLedgerRepository extends JpaRepository<SupplierAdvanceLedger, Long> {
@@ -19,7 +20,15 @@ public interface SupplierAdvanceLedgerRepository extends JpaRepository<SupplierA
     )
     BigDecimal getLastBalance(@Param("supplierId") Long supplierId);
 
-    List<SupplierAdvanceLedger>
-    findBySupplier_SupplierIdOrderByTransactionDateAsc(Long supplierId);
+    @Query("SELECT l FROM SupplierAdvanceLedger l " +
+            "WHERE l.supplier.supplierId = :supplierId " +
+            "AND l.transactionDate BETWEEN :start AND :end " +
+            "ORDER BY l.transactionDate ASC")
+    List<SupplierAdvanceLedger> findBySupplierAndDateRange(
+            @Param("supplierId") Long supplierId,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
+    );
+
 
 }

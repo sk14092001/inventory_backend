@@ -1,17 +1,17 @@
 package com.inventory_backend.inventory_backend.controller;
 
 import com.inventory_backend.inventory_backend.dto.*;
-import com.inventory_backend.inventory_backend.entity.Purchase;
 import com.inventory_backend.inventory_backend.entity.Supplier;
-import com.inventory_backend.inventory_backend.entity.SupplierAdvanceLedger;
 import com.inventory_backend.inventory_backend.repository.SupplierRepository;
 import com.inventory_backend.inventory_backend.repository.SupplierAdvanceLedgerRepository;
 import com.inventory_backend.inventory_backend.service.PurchaseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.util.List;
+import java.time.LocalDate;
+
 
 @RestController
 @RequestMapping("/api/purchase")
@@ -62,8 +62,9 @@ public class PurchaseController {
 
 
     @GetMapping("/ledger/{supplierId}")
-    public SupplierLedgerResponse getLedger(@PathVariable Long supplierId) {
-        return purchaseService.getSupplierLedger(supplierId);
+    public SupplierLedgerResponse getLedger(@PathVariable Long supplierId
+    , @RequestParam(required = false) LocalDate start,@RequestParam (required = false)LocalDate end) {
+        return purchaseService.getSupplierLedger(supplierId,start,end);
     }
 
 
@@ -71,6 +72,19 @@ public class PurchaseController {
     public SupplierBalanceResponse getSupplierBalance(@PathVariable Long supplierId) {
 
         return purchaseService.getSupplierBalanceDetails(supplierId);
+    }
+    @GetMapping("/supplier-ledger/pdf/{supplierId}")
+    public ResponseEntity<byte[]> downloadLedgerPdf(
+            @PathVariable Long supplierId,
+            @RequestParam(required = false) LocalDate start,
+            @RequestParam(required = false) LocalDate end
+    )
+    {
+        byte[] pdf= purchaseService.getSupplierLedgerPdf(supplierId,start,end);
+
+        return ResponseEntity.ok().header("Content-Type","application/pdf")
+                .header("Content-Disposition","attachment;supplier-ledger.pdf").body(pdf);
+
     }
 
 

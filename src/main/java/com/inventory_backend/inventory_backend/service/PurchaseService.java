@@ -11,10 +11,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
+import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -41,9 +47,12 @@ public class PurchaseService {
             Product product = productRepo.findById(item.getProductId())
                     .orElseThrow(() -> new RuntimeException("Product not found"));
 
-            SupplierProductPrice priceInfo =
-                    supplierPriceRepo.findBySupplierAndProduct(supplier, product)
-                            .orElseThrow(() -> new RuntimeException("Supplier price not found"));
+            SupplierProductPrice priceInfo = supplierPriceRepo
+                    .findBySupplierAndProduct(supplier.getSupplierId(), product.getProductId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Supplier price not found for supplierId = "
+                                    + supplier.getSupplierId() + " and productId = " + product.getProductId()
+                    ));
 
             BigDecimal price = BigDecimal.valueOf(priceInfo.getPrice());
             total = total.add(price.multiply(item.getQty()));
@@ -71,9 +80,13 @@ public class PurchaseService {
             Product product = productRepo.findById(item.getProductId())
                     .orElseThrow(() -> new RuntimeException("Product not found"));
 
-            SupplierProductPrice priceInfo =
-                    supplierPriceRepo.findBySupplierAndProduct(supplier, product)
-                            .orElseThrow(() -> new RuntimeException("Supplier price not found"));
+            SupplierProductPrice priceInfo = supplierPriceRepo
+                    . findBySupplierAndProduct(supplier.getSupplierId(), product.getProductId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Supplier price not found for Supplier ID: "
+                                    + supplier.getSupplierId() + " and Product ID: "
+                                    + product.getProductId()
+                    ));
 
             BigDecimal price = BigDecimal.valueOf(priceInfo.getPrice());
             BigDecimal lineTotal = price.multiply(item.getQty());
@@ -143,7 +156,7 @@ public class PurchaseService {
                     .orElseThrow(() -> new RuntimeException("Product not found"));
 
             SupplierProductPrice priceInfo =
-                    supplierPriceRepo.findBySupplierAndProduct(supplier, product)
+                    supplierPriceRepo.findBySupplierAndProduct(supplier.getSupplierId(), product.getProductId())
                             .orElseThrow(() -> new RuntimeException("Supplier product price not found"));
 
             BigDecimal price = BigDecimal.valueOf(priceInfo.getPrice());
@@ -361,13 +374,16 @@ public class PurchaseService {
         );
     }
 
-    public SupplierLedgerResponse getSupplierLedger(Long supplierId) {
+    public SupplierLedgerResponse getSupplierLedger(Long supplierId,LocalDate start,LocalDate end) {
 
         Supplier supplier = supplierRepository.findById(supplierId)
                 .orElseThrow(() -> new RuntimeException("Supplier not found"));
 
+        if (start==null) start=LocalDate.of(1970,1,1);
+        if(end==null) end=LocalDate.now();
+
         List<SupplierAdvanceLedger> ledgerList =
-                ledgerRepo.findBySupplier_SupplierIdOrderByTransactionDateAsc(supplierId);
+                ledgerRepo.findBySupplierAndDateRange(supplierId, start, end);
 
         BigDecimal balance = ledgerRepo.getLastBalance(supplierId);
         if (balance == null) balance = BigDecimal.ZERO;
@@ -398,5 +414,52 @@ public class PurchaseService {
 
         return new SupplierLedgerResponse(supplierDTO, balance, ledgerDtoList);
 
+    }
+
+    public byte[] getSupplierLedgerPdf(Long supplierId, LocalDate start, LocalDate end) {
+
+        SupplierLedgerResponse ledgerResponse=getSupplierLedger(supplierId,start,end);
+        try{
+        ByteArrayOutputStream out=new ByteArrayOutputStream();
+        Document document = new Document();
+        PdfWriter.getInstance(document, out);
+        document.open();
+
+        Font titleFont=new Font(Font.FontFamily.HELVETICA, 16, Font.BOLD);
+        Paragraph title=new Paragraph("SupplierLedger",titleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        document.add(title);
+        document.add(new Paragraph());
+        document.add(new Paragraph("Supplier Id :"+ledgerResponse.getSupplier().getSupplierId()));
+        document.add(new Paragraph("Supplier Name:"+ledgerResponse.getSupplier().getName()));
+        document.add(new Paragraph("Phone :"+ledgerResponse.getSupplier().getPhone()));
+        document.add(new Paragraph("Email:"+ledgerResponse.getSupplier().getEmail()));
+        document.add(new Paragraph());
+
+           PdfPTable table=new PdfPTable(6);
+           table.setWidthPercentage(100);
+            table.addCell("Date");
+            table.addCell("Type");
+            table.addCell("Amount");
+            table.addCell("Balance After");
+            table.addCell("Reference Type");
+            table.addCell("Reference ID");
+
+            for (SupplierLedgerDTO entry:ledgerResponse.getLedger())
+            {
+                table.addCell(entry.getTransactionDate().toString());
+                table.addCell(entry.getTransactionType());
+                table.addCell(entry.getAmount().toString());
+                table.addCell(entry.getBalanceAfterTransaction().toString());
+                table.addCell(entry.getReferenceType());
+                table.addCell(entry.getReferenceId().toString());
+
+            }
+            document.add(table);
+            document.close();
+            return out.toByteArray();
+        } catch (DocumentException e) {
+            throw new RuntimeException("Error Generating Pdf"+e.getMessage());
+        }
     }
 }

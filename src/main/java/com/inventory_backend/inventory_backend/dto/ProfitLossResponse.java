@@ -3,7 +3,9 @@ package com.inventory_backend.inventory_backend.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.sql.results.graph.collection.internal.BagInitializer;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
@@ -14,18 +16,18 @@ public class ProfitLossResponse {
     private Long supplierId;
     private String supplierName;
 
-    private double totalPurchase;
-    private double totalSales;
-    private double profit;
+    private BigDecimal totalPurchase;
+    private BigDecimal totalSales;
+    private BigDecimal profit;
 
     private String periodType;
     private LocalDate periodStart;
     private LocalDate periodEnd;
 
-    // Constructor used by service when supplier name is not required
-    public ProfitLossResponse(double totalPurchase,
-                              double totalSales,
-                              double profit,
+
+    public ProfitLossResponse(BigDecimal totalPurchase,
+                              BigDecimal totalSales,
+                              BigDecimal profit,
                               String periodType,
                               LocalDate periodStart,
                               LocalDate periodEnd) {

@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +41,7 @@ public class SupplierProductPriceService {
 
         SupplierProductPrice saved = sppRepository.save(spp);
 
-        // Convert to response DTO (CHANGED)
+
         SupplierProductPriceResponseDTO response = new SupplierProductPriceResponseDTO();
         response.setPriceId(saved.getPriceId());
         response.setSupplierId(saved.getSupplier().getSupplierId());
@@ -49,5 +51,16 @@ public class SupplierProductPriceService {
         response.setValidTo(saved.getValidTo());
 
         return response;
+    }
+
+    public List<SupplierProductPriceResponseDTO> saveMultipleMappings(SupplierProductPriceDTO[] dtos) {
+
+        List<SupplierProductPriceResponseDTO> responseList = new ArrayList<>();
+
+        for (SupplierProductPriceDTO dto : dtos) {
+            responseList.add(saveMapping(dto));
+        }
+
+        return responseList;
     }
 }

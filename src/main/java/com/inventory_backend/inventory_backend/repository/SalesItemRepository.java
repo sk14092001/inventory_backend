@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,9 +28,18 @@ public interface SalesItemRepository extends JpaRepository<SalesItem, Long> {
     );
 
     @Query("SELECT COALESCE(SUM(s.grandTotal), 0) FROM Sales s WHERE s.invoiceDate BETWEEN :start AND :end")
-    Double getTotalSalesAmountByInvoiceDate(LocalDate start, LocalDate end);
+    BigDecimal getTotalSalesAmountByInvoiceDate(LocalDate start, LocalDate end);
 
+    @Query("""
+    SELECT SUM(s.sellingPrice * s.qty) FROM SalesItem s """)
+    BigDecimal getTotalSalesAllTime();
 
+    @Query("""
+            SELECT SUM(s.sellingPrice * s.qty) FROM SalesItem s WHERE s.product.productId IN (
+    SELECT pd.product.productId
+    FROM PurchaseDetails pd
+    WHERE pd.purchase.supplier.supplierId = :supplierId) """)
+    BigDecimal getSupplierSalesAllTime(Long supplierId);
 }
 
 

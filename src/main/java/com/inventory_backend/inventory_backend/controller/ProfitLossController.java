@@ -1,12 +1,13 @@
 package com.inventory_backend.inventory_backend.controller;
 
 import com.inventory_backend.inventory_backend.dto.ProfitLossResponse;
+import com.inventory_backend.inventory_backend.dto.ProfitLossResponseDto;
 import com.inventory_backend.inventory_backend.service.ProfitLossService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+
 
 @RestController
 @RequestMapping("/api/profit-loss")
@@ -32,5 +33,16 @@ public class ProfitLossController {
                                                        @RequestParam String periodType)
         {
                return service.calculateOverallProfitLoss(start,end,periodType);
+        }
+
+        @GetMapping("/over/all")
+        public ProfitLossResponseDto getOverAll()
+        {
+            return service.calculateOverall();
+        }
+        @GetMapping("/supplier/{supplierId}")
+        public  ProfitLossResponseDto getSupplier(@PathVariable Long supplierId)
+        {
+            return service.calculateSupplier(supplierId);
         }
 }

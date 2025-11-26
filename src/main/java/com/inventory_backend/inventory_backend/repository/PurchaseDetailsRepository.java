@@ -7,12 +7,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 public interface PurchaseDetailsRepository extends JpaRepository<PurchaseDetails, Long> {
-    // more queries can be added for reports
+
     List<PurchaseDetails> findByPurchaseInvoiceDate(LocalDate date);
 
     @Query("SELECT AVG(pd.price) FROM PurchaseDetails pd WHERE pd.product.productId = :productId")
@@ -28,11 +29,14 @@ public interface PurchaseDetailsRepository extends JpaRepository<PurchaseDetails
 
 
     @Query("SELECT COALESCE(SUM(p.totalAmount), 0) FROM Purchase p WHERE p.invoiceDate BETWEEN :start AND :end")
-    Double getTotalPurchaseAmount(LocalDate start, LocalDate end);
+    BigDecimal getTotalPurchaseAmount(LocalDate start, LocalDate end);
 
 
+    @Query("""
+   SELECT SUM(pd.price * pd.qty) FROM PurchaseDetails pd WHERE pd.purchase.supplier.supplierId = :supplierId""")
+    BigDecimal getSupplierPurchaseAllTime(Long supplierId);
 
-
-
-
+    @Query(""" 
+        SELECT SUM(pd.price * pd.qty) FROM PurchaseDetails pd """)
+    BigDecimal getTotalPurchaseAllTime();
 }
