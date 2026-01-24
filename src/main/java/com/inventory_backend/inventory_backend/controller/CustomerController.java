@@ -5,6 +5,7 @@ import com.inventory_backend.inventory_backend.dto.CustomerResponse;
 import com.inventory_backend.inventory_backend.entity.Customer;
 import com.inventory_backend.inventory_backend.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,6 +42,8 @@ public class CustomerController {
     public String delete(@PathVariable Long id) {
         return customerService.deleteCustomer(id);
     }
+
+
 
 
 

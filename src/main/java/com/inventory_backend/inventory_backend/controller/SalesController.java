@@ -4,10 +4,13 @@ import com.inventory_backend.inventory_backend.dto.*;
 import com.inventory_backend.inventory_backend.entity.Customer;
 import com.inventory_backend.inventory_backend.service.CustomerService;
 import com.inventory_backend.inventory_backend.service.SalesService;
+import com.itextpdf.text.Header;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/sales")
@@ -54,5 +57,21 @@ public class SalesController {
     @GetMapping("/customer/{customerId}/ledger")
     public CustomerLedgerResponse getCustomerLedger(@PathVariable Long customerId) {
         return salesService.getCustomerLedger(customerId);
+    }
+
+    @GetMapping("/customerLedger/{customerId}")
+    public ResponseEntity<byte[]> getCustomerLedgerPdf(
+            @PathVariable Long customerId,
+            @RequestParam LocalDate start,
+            @RequestParam LocalDate end
+            )
+    {
+        byte[] pdf=salesService.getCustomerLedgerPdf(customerId,start,end);
+
+        return ResponseEntity.ok().
+                header("Content-Type","application/pdf")
+                .header("Content-Disposition","attachment; filename=customer-ledger.pdf").
+                body(pdf);
+
     }
 }

@@ -3,6 +3,9 @@ package com.inventory_backend.inventory_backend.service;
 import com.inventory_backend.inventory_backend.dto.*;
 import com.inventory_backend.inventory_backend.entity.*;
 import com.inventory_backend.inventory_backend.repository.*;
+import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -11,10 +14,12 @@ import org.springframework.data.domain.PageRequest;
 
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -347,5 +352,60 @@ public class SalesService {
         );
 
         return new CustomerLedgerResponse(customerDTO, balance, list);
+    }
+
+    public byte[] getCustomerLedgerPdf(Long customerId, LocalDate start, LocalDate end) {
+
+        CustomerLedgerResponse res = getCustomerLedger(customerId);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Document document = new Document();
+
+        try {
+            PdfWriter.getInstance(document, out);
+            document.open();
+            document.add(new Paragraph("Customer Ledger Report", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18)));
+            document.add(new Paragraph("Generated On: " + LocalDate.now()));
+            document.add(Chunk.NEWLINE);
+
+            document.add(new Paragraph("Customer Details", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14)));
+            document.add(new Paragraph("Name:" + res.getCustomer().getName()));
+            document.add(new Paragraph("Phone:" + res.getCustomer().getPhone()));
+            document.add(new Paragraph("Email:" + res.getCustomer().getEmail()));
+            document.add(new Paragraph("address:" + res.getCustomer().getAddress()));
+            document.add(Chunk.NEWLINE);
+
+            PdfPTable table = new PdfPTable(6);
+            table.setWidthPercentage(100);
+            table.addCell("Type");
+            table.addCell("Amount");
+            table.addCell("Balance");
+            table.addCell("Date");
+            table.addCell("Ref Type");
+            table.addCell("Ref ID");
+
+            for (CustomerLedgerDTO led : res.getLedgerList()) {
+                table.addCell(led.getTransactionType());
+                table.addCell(led.getAmount().toString());
+                table.addCell(led.getBalanceAfterTransaction().toString());
+                table.addCell(led.getTransactionDate().toString());
+                table.addCell(led.getReferenceType());
+                table.addCell(led.getReferenceId() == null ? "-" : led.getReferenceId().toString());
+
+            }
+            document.add(table);
+
+
+            document.add(Chunk.NEWLINE);
+            document.add(new Paragraph("Current Balance: " + res.getCurrentBalance(),
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14)));
+
+            document.close();
+
+
+        } catch (DocumentException e) {
+            throw new RuntimeException(e);
+        }
+        return out.toByteArray();
     }
 }
