@@ -6,12 +6,6 @@ pipeline {
         jdk 'JDK17'
     }
 
-    environment {
-        SONAR_HOST = "http://host.docker.internal:9000"
-        IMAGE_NAME = "inventory-backend"
-        CONTAINER_NAME = "inventory-container"
-    }
-
     stages {
 
         stage('Checkout Code') {
@@ -23,31 +17,21 @@ pipeline {
 
         stage('Build Project') {
             steps {
-                sh 'mvn clean package'
+                sh 'mvn clean install'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQubeServer') {
-                    sh 'mvn sonar:sonar -Dsonar.projectKey=inventory-backend'
+                    sh 'mvn sonar:sonar'
                 }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Quality Gate') {
             steps {
-                sh "docker build -t ${IMAGE_NAME} ."
-            }
-        }
-
-        stage('Run Container') {
-            steps {
-                sh """
-                docker stop ${CONTAINER_NAME} || true
-                docker rm ${CONTAINER_NAME} || true
-                docker run -d -p 8081:8080 --name ${CONTAINER_NAME} ${IMAGE_NAME}
-                """
+                waitForQualityGate abortPipeline: true
             }
         }
     }
