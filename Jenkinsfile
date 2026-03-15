@@ -7,17 +7,17 @@ pipeline {
     }
 
     environment {
-        SONAR_HOST = "http://localhost:9000"
-        SONAR_TOKEN = "sqa_7637bb9fd8ffd9b2284ecdbf724965cb77170677"
-        IMAGE_NAME = "springboot-demo"
-        CONTAINER_NAME = "springboot-container"
+        SONAR_HOST = "http://host.docker.internal:9000"
+        IMAGE_NAME = "inventory-backend"
+        CONTAINER_NAME = "inventory-container"
     }
 
     stages {
 
         stage('Checkout Code') {
             steps {
-                git 'https://github.com/yourusername/springboot-project.git'
+                git branch: 'feature/purchase-admin',
+                url: 'https://github.com/sk14092001/inventory_backend.git'
             }
         }
 
@@ -27,14 +27,11 @@ pipeline {
             }
         }
 
-        stage('SonarQube Scan') {
+        stage('SonarQube Analysis') {
             steps {
-                sh """
-                mvn sonar:sonar \
-                -Dsonar.projectKey=springboot-demo \
-                -Dsonar.host.url=${SONAR_HOST} \
-                -Dsonar.login=${SONAR_TOKEN}
-                """
+                withSonarQubeEnv('SonarQubeServer') {
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=inventory-backend'
+                }
             }
         }
 
@@ -53,6 +50,5 @@ pipeline {
                 """
             }
         }
-
     }
 }
