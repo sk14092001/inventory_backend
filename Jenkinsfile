@@ -11,7 +11,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'feature/purchase-admin',
-                url: 'https://github.com/sk14092001/inventory_backend.git'
+                    url: 'https://github.com/sk14092001/inventory_backend.git'
             }
         }
 
@@ -24,14 +24,21 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQubeServer') {
-                    sh 'mvn sonar:sonar'
+                    sh '''
+                    mvn sonar:sonar \
+                    -Dsonar.projectKey=inventory_backend \
+                    -Dsonar.projectName=inventory_backend \
+                    -Dsonar.host.url=http://localhost:9000
+                    '''
                 }
             }
         }
 
         stage('Quality Gate') {
             steps {
-                waitForQualityGate abortPipeline: true
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
     }
