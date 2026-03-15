@@ -5,6 +5,9 @@ import com.inventory_backend.inventory_backend.dto.CustomerResponse;
 import com.inventory_backend.inventory_backend.entity.Customer;
 import com.inventory_backend.inventory_backend.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,6 +44,14 @@ public class CustomerController {
     public String delete(@PathVariable Long id) {
         return customerService.deleteCustomer(id);
     }
+
+
+    @GetMapping("/page")
+    public Page<Customer> pageData(@RequestParam int page, @RequestParam int size){
+        Pageable pageable = (Pageable) PageRequest.of(page, size);
+        return customerService.pageCustomer(pageable);
+    }
+
 
 
 

@@ -5,6 +5,8 @@ import com.inventory_backend.inventory_backend.dto.CustomerResponse;
 import com.inventory_backend.inventory_backend.entity.Customer;
 import com.inventory_backend.inventory_backend.repository.CustomerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -104,4 +106,10 @@ public class CustomerService {
         return customerRepo.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found with ID: " + customerId));
     }
+
+
+    public Page<Customer> pageCustomer(Pageable pageable){
+        return customerRepo.findAll(pageable);
+    }
+
 }

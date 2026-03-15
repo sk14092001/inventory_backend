@@ -2,6 +2,7 @@ package com.inventory_backend.inventory_backend.service;
 
 import com.inventory_backend.inventory_backend.dto.ProductRequest;
 import com.inventory_backend.inventory_backend.dto.ProductResponse;
+import com.inventory_backend.inventory_backend.dto.ProductResponseDTO;
 import com.inventory_backend.inventory_backend.entity.Product;
 import com.inventory_backend.inventory_backend.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,24 +40,32 @@ public class ProductService {
     }
 
 
-    public List<ProductResponse> getAllProducts() {
-        List<Product> list = productRepository.findAll();
+    public List<ProductResponseDTO> getAllProducts() {
+        List<ProductResponseDTO> list = productRepository.getProductDetails();
+//        List<ProductResponseDTO> responseDTO = new ArrayList<>();
+//        for(Object[] obj: list){
+//            responseDTO.add(new ProductResponseDTO(
+//                    ((Number) obj[0]).longValue(),   // product_id
+//                    (String) obj[1],                 // description
+//                    (String) obj[2],                 // name
+//                    ((Number) obj[3]).doubleValue(), // prefix_price
+//                    (String) obj[4]
+//            ));
+//        }
 
-        List<ProductResponse> responseList = new ArrayList<>();
+//        for (Product p : list) {
+//            responseList.add(
+//                    new ProductResponse(
+//                            p.getProductId(),
+//                            p.getName(),
+//                            p.getUnit(),
+//                            p.getDescription(),
+//                            p.getPrefixPrice()
+//                    )
+//            );
+//        }
 
-        for (Product p : list) {
-            responseList.add(
-                    new ProductResponse(
-                            p.getProductId(),
-                            p.getName(),
-                            p.getUnit(),
-                            p.getDescription(),
-                            p.getPrefixPrice()
-                    )
-            );
-        }
-
-        return responseList;
+        return list;
     }
 
 

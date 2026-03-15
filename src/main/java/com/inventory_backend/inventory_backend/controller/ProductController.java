@@ -2,6 +2,7 @@ package com.inventory_backend.inventory_backend.controller;
 
 import com.inventory_backend.inventory_backend.dto.ProductRequest;
 import com.inventory_backend.inventory_backend.dto.ProductResponse;
+import com.inventory_backend.inventory_backend.dto.ProductResponseDTO;
 import com.inventory_backend.inventory_backend.dto.ProductStockResponse;
 import com.inventory_backend.inventory_backend.service.ProductService;
 import com.inventory_backend.inventory_backend.service.StockService;
@@ -28,8 +29,10 @@ public class ProductController {
         return ResponseEntity.ok(productService.saveProduct(request));
     }
 
+
+
     @GetMapping("/getAll")
-    public ResponseEntity<List<ProductResponse>> getAll() {
+    public ResponseEntity<List<ProductResponseDTO>> getAll() {
         return ResponseEntity.ok(productService.getAllProducts());
     }
 
