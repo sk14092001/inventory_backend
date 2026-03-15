@@ -16,23 +16,33 @@ pipeline {
             }
         }
 
-        stage('Build Project') {
+        stage('Build and Test') {
             steps {
-                echo "Building the project using Maven"
-                sh 'mvn clean install'
+                echo "Building project and running tests"
+                // This will also run tests needed for coverage
+                sh 'mvn clean test'
+            }
+        }
+
+        stage('Generate JaCoCo Report') {
+            steps {
+                echo "Generating JaCoCo coverage report"
+                sh 'mvn jacoco:report'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                echo "Running SonarQube Analysis"
-                withSonarQubeEnv('SonarQubeServer') {
+                echo "Running SonarQube Analysis with JaCoCo coverage"
+                // Replace 'MySonarQubeServer' with your actual Jenkins SonarQube server name
+                withSonarQubeEnv('MySonarQubeServer') {
                     sh """
                     mvn sonar:sonar \
                     -Dsonar.projectKey=inventory_backend \
                     -Dsonar.projectName=inventory_backend \
                     -Dsonar.host.url=http://localhost:9000 \
-                    -Dsonar.login=sqa_e530475d252ac7fe6959e0f8249e49cee43b3663
+                    -Dsonar.login=sqa_e530475d252ac7fe6959e0f8249e49cee43b3663 \
+                    -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
                     """
                 }
             }
