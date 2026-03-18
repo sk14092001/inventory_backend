@@ -48,6 +48,7 @@ pipeline {
                     -Dsonar.login=$SONAR_TOKEN
                     """
 
+
                 }
             }
         }
