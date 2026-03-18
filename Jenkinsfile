@@ -52,7 +52,7 @@ pipeline {
             }
         }
 
-//        stage('Quality Gate') {
+//        stage('Quality Gate')
 //            steps {
 //                echo "Checking SonarQube Quality Gate"
 //
