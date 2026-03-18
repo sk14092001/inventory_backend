@@ -10,33 +10,30 @@ pipeline {
         SONAR_TOKEN = credentials('sonar-token')
     }
 
+    options {
+        skipDefaultCheckout(true)
+    }
+
     stages {
 
         stage('Checkout Code') {
             steps {
                 echo "Checking out code from Git"
                 git branch: 'feature/purchase-admin',
-                url: 'https://github.com/sk14092001/inventory_backend.git'
+                    url: 'https://github.com/sk14092001/inventory_backend.git'
             }
         }
 
         stage('Build and Test') {
             steps {
                 echo "Building project and running tests"
-                sh 'mvn clean test'
-            }
-        }
-
-        stage('Generate JaCoCo Report') {
-            steps {
-                echo "Generating JaCoCo coverage report"
-                sh 'mvn jacoco:report'
+                sh 'mvn clean verify'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                echo "Running SonarQube Analysis"
+                echo "Running SonarQube analysis"
 
                 withSonarQubeEnv('MySonarQubeServer') {
 
@@ -44,33 +41,23 @@ pipeline {
                     mvn sonar:sonar \
                     -Dsonar.projectKey=inventory_backend \
                     -Dsonar.projectName=inventory_backend \
-                    -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-                    -Dsonar.login=$SONAR_TOKEN
+                    -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
                     """
-
 
                 }
             }
         }
 
-//        stage('Quality Gate'){
-//            steps {
-//                echo "Checking SonarQube Quality Gate"
-//
-//                timeout(time: 2, unit: 'MINUTES') {
-//                    script {
-//                        def qg = waitForQualityGate()
-//
-//                        if (qg.status != 'OK') {
-//                            error "Pipeline aborted due to Quality Gate failure: ${qg.status}"
-//                        } else {
-//                            echo "Quality Gate passed: ${qg.status}"
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
+        stage('Quality Gate') {
+            steps {
+                echo "Waiting for SonarQube Quality Gate"
+
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+    }
 
     post {
         success {
