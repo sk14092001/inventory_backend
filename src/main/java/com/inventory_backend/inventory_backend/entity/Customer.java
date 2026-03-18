@@ -2,6 +2,7 @@ package com.inventory_backend.inventory_backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 @Entity
@@ -21,6 +22,7 @@ public class Customer {
     private String phone;
     private String email;
     private String address;
-
+    private boolean active = true;
+    private BigDecimal balance = BigDecimal.ZERO;
     private LocalDateTime createdAt = LocalDateTime.now();
 }

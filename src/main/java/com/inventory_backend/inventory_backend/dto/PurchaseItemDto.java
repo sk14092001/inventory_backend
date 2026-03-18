@@ -8,5 +8,5 @@ import java.math.BigDecimal;
 public class PurchaseItemDto {
     private Long productId;
     private BigDecimal  qty;
-    private BigDecimal price; // unit price
+//    private BigDecimal price; // unit price
 }

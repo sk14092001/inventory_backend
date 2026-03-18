@@ -2,6 +2,7 @@ package com.inventory_backend.inventory_backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 @Entity
@@ -25,9 +26,9 @@ public class Sales {
 
     private LocalDate invoiceDate;
 
-    private Double totalAmount;
-    private Double discount;
-    private Double grandTotal;
+    private BigDecimal totalAmount;
+    private BigDecimal discount;
+    private BigDecimal grandTotal;
 
     private LocalDateTime createdAt = LocalDateTime.now();
 }

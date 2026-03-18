@@ -21,7 +21,7 @@ public class Product {
 
     private String name;
 
-    private String unit; // KG or PCS
+    private String unit;
 
     private String description;
 

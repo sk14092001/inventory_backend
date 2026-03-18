@@ -2,6 +2,7 @@ package com.inventory_backend.inventory_backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 @Entity
@@ -25,7 +26,7 @@ public class SalesItem {
     @JoinColumn(name = "product_id")
     private Product product;
 
-    private Double qty;
-    private Double sellingPrice;
-    private Double total;
+    private BigDecimal qty;
+    private BigDecimal sellingPrice;
+    private BigDecimal total;
 }
